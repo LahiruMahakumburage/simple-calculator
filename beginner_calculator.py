@@ -1,222 +1,217 @@
-
-
-#
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import font
+
+# --- Main Application Class (Inherits from tk.Tk) ---
+# This class represents the main calculator window
 
 
-class SimpleCalculator:
+class CalculatorApp(tk.Tk):
+
     def __init__(self):
-        # STEP 1: Create the main window
-        self.window = tk.Tk()
-        self.window.title("Begiber Calculator")
-        self.window.geometry("300x450")
+        """
+        Constructor for the main application window.
+        """
+        # Call the parent class (tk.Tk) constructor
+        super().__init__()
 
-        # STEP 2: Create variables to store numbers
-        self.display_text = tk.StringVar()  # What shows on screen
-        self.display_text.set("0")          # Start with "0"
+        # --- Window Setup ---
+        self.title("Calculator")
+        self.geometry('400x500')
+        self.configure(bg="black")  # Set a background color
 
-        self. first_number = ""              # First number in calculation
-        self.operation = ""                 # +, -, ×, ÷
-        self.current_number = "0"           # Number being typed now
+        # --- State Variable ---
+        # This will hold the string to be evaluated, e.g., "12+5"
+        self.expression = ""
 
-        # STEP 3: Create the calculator interface
-        self.make_display()
-        self.make_buttons()
+        # --- Define Fonts ---
+        self.display_font = font.Font(family="Helvetica", size=32)
 
-    def make_display(self):
+        # --- Create Widgets ---
 
-        screen = tk.Entry(
-            self.window,
-            textvariable=self.display_text,
-            font=("Arial", 20),
-            justify="right",
-            state="readonly"
+        # 1. Create the Display
+        self.display_var = tk.StringVar()
+        self.display_var.set("0")  # Start with "0"
+
+        # The display is an Entry widget, but set to 'readonly'
+        self.display_entry = tk.Entry(
+            self,
+            textvariable=self.display_var,
+            font=self.display_font,
+            # --- THIS IS THE UPDATED LINE ---
+            fg="#000000",  # Changed from "white" to a light green
+            # --- END OF UPDATE ---
+            bg="black",
+            bd=0,  # No border
+            justify='right',  # Align text to the right
+            state='readonly'  # Disables typing directly into the display
         )
-        screen.pack(pady=10, padx=10, fill="x")
+        # Use pack for the display, making it fill the width
+        self.display_entry.pack(fill='x', padx=10, pady=20)
 
-    def make_buttons(self):
+        # 2. Create the Frame for Buttons
+        self.button_frame = ButtonFrame(self)
+        self.button_frame.pack(fill='both', expand=True, padx=5, pady=5)
 
-        # Create a frame to hold all buttons
-        button_frame = tk.Frame(self.window)
-        button_frame.pack(pady=10)
+        # 3. (Optional) Bind keyboard
+        self.bind("<Key>", self.on_key_press)
 
-        # ROW 1: Clear, +/-, %, ÷
-        self.create_button("C", 0, 0, button_frame, "lightcoral")
-        self.create_button("±", 0, 1, button_frame, "lightgray")
-        self.create_button("%", 0, 2, button_frame, "lightgray")
-        self.create_button("÷", 0, 3, button_frame, "orange")
+    # --- Logic Methods ---
 
-        # ROW 2: 7, 8, 9, ×
-        self.create_button("7", 1, 0, button_frame)
-        self.create_button("8", 1, 1, button_frame)
-        self.create_button("9", 1, 2, button_frame)
-        self.create_button("×", 1, 3, button_frame, "orange")
+    def on_button_click(self, char):
+        """
+        Called when a number or operator button is pressed.
+        Appends the character to the 'expression' string.
+        """
+        current_display = self.display_var.get()
+        char_str = str(char)
 
-        # ROW 3: 4, 5, 6, -
-        self.create_button("4", 2, 0, button_frame)
-        self.create_button("5", 2, 1, button_frame)
-        self.create_button("6", 2, 2, button_frame)
-        self.create_button("-", 2, 3, button_frame, "orange")
-
-        # ROW 4: 1, 2, 3, +
-        self.create_button("1", 3, 0, button_frame)
-        self.create_button("2", 3, 1, button_frame)
-        self.create_button("3", 3, 2, button_frame)
-        self.create_button("+", 3, 3, button_frame, "orange")
-
-        # ROW 5: 0 (wide), ., =
-        zero_btn = tk.Button(
-            button_frame,
-            text="0",
-            font=("Arial", 16),
-            width=8,
-            height=2,
-            command=lambda: self.button_pressed("0")
-        )
-        zero_btn.grid(row=4, column=0, columnspan=2, padx=2, pady=2)
-
-        self.create_button(".", 4, 2, button_frame)
-        self.create_button("=", 4, 3, button_frame, "lightgreen")
-
-    def create_button(self, text, row, col, parent, color="lightblue"):
-        """Helper function to create a single button"""
-        btn = tk.Button(
-            parent,
-            text=text,
-            font=("Arial", 16),
-            width=4,
-            height=2,
-            bg=color,
-            command=lambda: self.button_pressed(text)
-        )
-        btn.grid(row=row, column=col, padx=2, pady=2)
-
-    def button_pressed(self, button_text):
-        """This function runs when ANY button is clicked"""
-
-        # Check button pressed
-        if button_text.isdigit():           # Numbers 0-9
-            self.add_digit(button_text)
-
-        elif button_text == ".":            # Decimal point
-            self.add_decimal()
-
-        elif button_text in "+-×÷":        # Operation buttons
-            self.set_operation(button_text)
-
-        elif button_text == "=":           # Equals button
-            self.calculate_result()
-
-        elif button_text == "C":           # Clear button
-            self.clear_all()
-
-        elif button_text == "±":           # Plus/minus button
-            self.change_sign()
-
-        elif button_text == "%":           # Percentage button
-            self.make_percentage()
-
-    def add_digit(self, digit):
-        """Adds a number digit to the display"""
-        if self.current_number == "0":
-            self.current_number = digit
+        if current_display.startswith("Error"):
+            self.expression = char_str
+        elif self.expression == "0" and char_str not in "0.":
+            self.expression = char_str
+        elif self.expression == "0" and char_str == "0":
+            return
         else:
-            self.current_number = self.current_number + digit
+            self.expression += char_str
 
-        self.display_text.set(self.current_number)
+        self.display_var.set(self.expression)
 
-    def add_decimal(self):
-        """Adds decimal point if not already present"""
-        if "." not in self.current_number:
-            self.current_number = self.current_number + "."
-            self.display_text.set(self.current_number)
+    def on_clear(self):
+        """
+        Called when the 'AC' (All Clear) button is pressed.
+        """
+        self.expression = ""
+        self.display_var.set("0")
 
-    def set_operation(self, op):
-        """Stores the operation and first number"""
-        # If we already have an operation, calculate first
-        if self.operation and self.first_number:
-            self.calculate_result()
-
-        # Store the first number and operation
-        self.first_number = self.current_number
-        self.operation = op
-        self.current_number = "0"
-
-    def calculate_result(self):
-        """Does the actual math calculation"""
-        # Make sure we have everything needed
-        if not self.operation or not self.first_number:
+    def on_equals(self):
+        """
+        Called when the '=' button is pressed.
+        Evaluates the 'expression' string and handles errors.
+        """
+        if not self.expression:
             return
 
         try:
-            # Convert text to numbers
-            num1 = float(self.first_number)
-            num2 = float(self.current_number)
+            safe_expression = self.expression.replace(
+                '×', '*').replace('÷', '/')
+            result = str(eval(safe_expression))
+            self.display_var.set(result)
+            self.expression = result
 
-            # Do the math based on operation
-            if self.operation == "+":
-                answer = num1 + num2
-            elif self.operation == "-":
-                answer = num1 - num2
-            elif self.operation == "×":
-                answer = num1 * num2
-            elif self.operation == "÷":
-                if num2 == 0:
-                    messagebox.showerror("Error", "Cannot divide by zero!")
-                    self.clear_all()
-                    return
-                answer = num1 / num2
+        except ZeroDivisionError:
+            self.display_var.set("Error: Div by zero")
+            # --- ADD THIS LINE ---
+            self.display_entry.config(fg="red")
+            self.expression = ""
+        except SyntaxError:
+            self.display_var.set("Error: Invalid Syntax")
+            # --- ADD THIS LINE ---
+            self.display_entry.config(fg="red")
+            self.expression = ""
+        except Exception as e:
+            self.display_var.set("Error")
+            # --- ADD THIS LINE ---
+            self.display_entry.config(fg="red")
+            self.expression = ""
 
-            # Show the result
-            self.current_number = str(answer)
-            self.display_text.set(self.current_number)
+    def on_key_press(self, event):
+        """
+        Handles keyboard input for better usability.
+        """
+        key = event.char
+        keysym = event.keysym
 
-            # Clear operation for next calculation
-            self.operation = ""
-            self.first_number = ""
-
-        except:
-            messagebox.showerror("Error", "Something went wrong!")
-            self.clear_all()
-
-    def clear_all(self):
-        """Resets calculator to starting state"""
-        self.current_number = "0"
-        self.first_number = ""
-        self.operation = ""
-        self.display_text.set("0")
-
-    def change_sign(self):
-        """Changes positive to negative or vice versa"""
-        if self.current_number != "0":
-            if self.current_number.startswith("-"):
-                self.current_number = self.current_number[1:]  # Remove minus
+        if key in '0123456789.':
+            self.on_button_click(key)
+        elif key == '+':
+            self.on_button_click('+')
+        elif key == '-':
+            self.on_button_click('-')
+        elif key == '*':
+            self.on_button_click('×')
+        elif key == '/':
+            self.on_button_click('÷')
+        elif keysym == 'Return' or key == '\r' or key == '=':
+            self.on_equals()
+        elif keysym == 'Escape' or keysym == 'Delete':
+            self.on_clear()
+        elif keysym == 'BackSpace':
+            self.expression = self.expression[:-1]
+            if not self.expression:
+                self.display_var.set("0")
             else:
-                self.current_number = "-" + self.current_number  # Add minus
-
-            self.display_text.set(self.current_number)
-
-    def make_percentage(self):
-        """Converts current number to percentage"""
-        try:
-            number = float(self.current_number)
-            result = number / 100
-            self.current_number = str(result)
-            self.display_text.set(self.current_number)
-        except:
-            pass
-
-    def start_calculator(self):
-        """Starts the calculator and keeps it running"""
-        self.window.mainloop()
+                self.display_var.set(self.expression)
 
 
-# START THE PROGRAM
-# =================
+# --- Button Frame Class (Inherits from tk.Frame) ---
+class ButtonFrame(tk.Frame):
+
+    def __init__(self, parent):
+        """
+        Constructor for the button frame.
+        'parent' here is the main CalculatorApp instance.
+        """
+        super().__init__(parent, bg="black")
+
+        self.app = parent
+
+        # --- Define Fonts and Colors ---
+        button_font = font.Font(family="Helvetica", size=18)
+        num_bg = "#505050"
+        op_bg = "#FF9500"
+        special_bg = "#D4D4D2"
+        text_color = "white"
+        special_text_color = "Black"
+
+        # --- Define Button Layout ---
+        buttons = [
+            ('AC', 1, 0, 3, self.app.on_clear, special_bg, special_text_color),
+            ('÷',  1, 3, 1, lambda: self.app.on_button_click('÷'), op_bg, text_color),
+
+            ('7',  2, 0, 1, lambda: self.app.on_button_click(7), num_bg, text_color),
+            ('8',  2, 1, 1, lambda: self.app.on_button_click(8), num_bg, text_color),
+            ('9',  2, 2, 1, lambda: self.app.on_button_click(9), num_bg, text_color),
+            ('×',  2, 3, 1, lambda: self.app.on_button_click('×'), op_bg, text_color),
+
+            ('4',  3, 0, 1, lambda: self.app.on_button_click(4), num_bg, text_color),
+            ('5',  3, 1, 1, lambda: self.app.on_button_click(5), num_bg, text_color),
+            ('6',  3, 2, 1, lambda: self.app.on_button_click(6), num_bg, text_color),
+            ('-',  3, 3, 1, lambda: self.app.on_button_click('-'), op_bg, text_color),
+
+            ('1',  4, 0, 1, lambda: self.app.on_button_click(1), num_bg, text_color),
+            ('2',  4, 1, 1, lambda: self.app.on_button_click(2), num_bg, text_color),
+            ('3',  4, 2, 1, lambda: self.app.on_button_click(3), num_bg, text_color),
+            ('+',  4, 3, 1, lambda: self.app.on_button_click('+'), op_bg, text_color),
+
+            ('0',  5, 0, 2, lambda: self.app.on_button_click(0), num_bg, text_color),
+            ('.',  5, 2, 1, lambda: self.app.on_button_click('.'), num_bg, text_color),
+            ('=',  5, 3, 1, self.app.on_equals, op_bg, text_color),
+        ]
+
+        # --- Create and Place Buttons ---
+        for (text, row, col, col_span, cmd, bg, fg) in buttons:
+            btn = tk.Button(
+                self,
+                text=text,
+                font=button_font,
+                command=cmd,
+                bg=bg,
+                fg=fg,
+                bd=0,
+                padx=20,
+                pady=20
+            )
+            btn.grid(row=row, column=col, columnspan=col_span,
+                     sticky="nsew", padx=2, pady=2)
+
+        # --- Configure Grid to be Responsive ---
+        for i in range(1, 6):
+            self.grid_rowconfigure(i, weight=1)
+        for i in range(4):
+            self.grid_columnconfigure(i, weight=1)
+
+
+# --- Main execution ---
 if __name__ == "__main__":
-    # Create a calculator
-    my_calculator = SimpleCalculator()
-
-    # Start it running
-    my_calculator.start_calculator()
+    app = CalculatorApp()
+    app.mainloop()
